@@ -1,6 +1,6 @@
 <template>
   <div class="form-wrapper">
-    <form class="custom-form" @submit.prevent="getLocation">
+    <form class="custom-form" @submit.prevent="handleLogin">
       <p class="text-form">Login Form</p>
       <div class="form-group">
         <label for="name">Name</label>
@@ -29,12 +29,10 @@
   </div>
 </template>
 
-
 <script>
 import axios from "axios";
 
 export default {
-
   data() {
     return {
       name: '',
@@ -45,8 +43,25 @@ export default {
     };
   },
   methods: {
-    handleSubmit() {
-      alert(`Name: ${this.name}\nPassword: ${this.password}`);
+    // Handles the login process
+    async handleLogin() {
+      try {
+        // You can add your login API call here and check if login is successful
+        // const response = await axios.post('http://localhost:3000/login', {
+        //   name: this.name,
+        //   password: this.password,
+        // });
+
+        // Check if the login is successful
+        if (this.name && this.password) {  // Simulate login check
+          // Redirect to HomeView after successful login
+          this.$router.push('/home');
+        } else {
+          this.error = 'Login failed. Please check your credentials.';
+        }
+      } catch (err) {
+        this.error = 'Login failed. Please check your credentials and try again.';
+      }
     },
     getLocation() {
       if ("geolocation" in navigator) {
@@ -81,7 +96,6 @@ export default {
     },
   },
 };
-
 </script>
 
 <style scoped>
@@ -107,7 +121,7 @@ export default {
 .text-form{
   margin: 20px;
   text-align: center;
-  color: #3b82f6;
+  color: #eb804b;
   font-weight: bold;
   font-size: 40px;
 }
@@ -133,7 +147,7 @@ label {
 }
 
 .form-control:focus {
-  border-color: #3b82f6;
+  border-color: #eb804b;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   outline: none;
 }
@@ -141,7 +155,7 @@ label {
 .submit-btn {
   width: 100%;
   padding: 12px;
-  background-color: #3b82f6;
+  background-color: #eb804b;
   color: white;
   font-size: 16px;
   font-weight: 600;
@@ -152,6 +166,6 @@ label {
 }
 
 .submit-btn:hover {
-  background-color: #2563eb;
+  background-color: #eb804b;
 }
 </style>
