@@ -18,7 +18,7 @@
     <div class="calendar-view">
       <h3>Your Clock In/Out Calendar</h3>
       <vue-cal style="height: 450px; border-radius: 12px;" :events="calendarEvents" :time="false" default-view="month"
-        hide-view-selector locale="en" :first-day-of-week="6" event-color="#4CAF50" event-text-color="#fff"
+        hide-view-selector locale="en" :first-day-of-week="4" event-color="#4CAF50" event-text-color="#fff"
         :week-start="6" :day-style="dayStyle" @click-event="onEventClick" />
     </div>
   </div>
@@ -201,7 +201,6 @@ export default {
   background-color: #388e3c;
 }
 
-/* Mobile responsiveness */
 @media only screen and (max-width: 768px) {
   .clock-wrapper {
     padding: 1.5rem;
