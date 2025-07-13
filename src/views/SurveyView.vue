@@ -1,189 +1,343 @@
 <template>
   <div class="survey">
-    <h2>Employee Performance Survey</h2>
+    <h2>Surveys</h2>
 
-    <div v-if="step === 1">
-      <div
-          v-for="(q, i) in stepOneQuestions"
-          :key="i"
-          :class="[
-          'question',
-          { answered: stepOneAnswers[i] },
-          { 'text-answered': q.type === 'text' && stepOneAnswers[i] }
-        ]"
-      >
-        <transition name="fade">
-          <div v-if="i !== 10 || stepOneAnswers[9] === 'No'">
-            <label>{{ q.label }}</label>
-
-            <template v-if="q.type === 'multiple'">
-              <div class="options">
-                <button
-                    v-for="opt in q.options"
-                    :key="opt"
-                    :class="['option-button', { selected: stepOneAnswers[i] === opt }]"
-                    @click="selectOption(i, opt)"
-                >
-                  {{ opt }}
-                </button>
-              </div>
-            </template>
-
-            <template v-else-if="q.type === 'rating'">
-              <div class="rating-scale">
-                <label
-                    v-for="n in 10"
-                    :key="n"
-                    :class="['rating-button', { selected: stepOneAnswers[i] == n }]"
-                >
-                  <input
-                      type="radio"
-                      :name="'q' + i"
-                      :value="n"
-                      v-model="stepOneAnswers[i]"
-                      class="hidden-radio"
-                  />
-                  {{ n }}
-                </label>
-              </div>
-            </template>
-
-            <template v-else>
-              <input
-                  type="text"
-                  v-model="stepOneAnswers[i]"
-                  :class="{ 'text-highlighted': stepOneAnswers[i] }"
-              />
-            </template>
-          </div>
-        </transition>
-      </div>
-
-      <div class="full-width-btn" @click="goToStepTwo">Next</div>
+    <!-- Success Message -->
+    <div v-if="successMessage" class="success-message">
+      {{ successMessage }}
     </div>
 
-    <div v-else>
-      <h2>Additional Information</h2>
+    <!-- List of surveys -->
+    <div v-if="!isSurveySelected && surveys.length">
       <div
-          v-for="(q, i) in stepTwoQuestions"
-          :key="i"
-          :class="[
-          'question',
-          { answered: stepTwoAnswers[i] },
-          { 'text-answered': q.type === 'text' && stepTwoAnswers[i] }
-        ]"
+          v-for="survey in surveys"
+          :key="survey.id"
+          class="survey-item"
+          @click="fetchSurveyQuestions(survey.id)"
       >
-        <label>{{ q.label }}</label>
+        <h3>{{ survey.title }}</h3>
+        <p>{{ survey.description }}</p>
+      </div>
+    </div>
 
-        <template v-if="q.type === 'dropdown'">
-          <select v-model="stepTwoAnswers[i]">
-            <option disabled value="">Select...</option>
-            <option v-for="opt in q.options" :key="opt">{{ opt }}</option>
-          </select>
-        </template>
+    <!-- Survey Questions -->
+    <div v-if="isSurveySelected && survey.questions.length" class="survey-form">
+      <h2>{{ survey.title }}</h2>
+      <p>{{ survey.description }}</p>
 
-        <template v-else>
+      <div
+          v-for="question in survey.questions"
+          :key="question.id"
+          class="question"
+          :class="{ submitted: submittedQuestions.includes(question.id) }"
+      >
+        <label :for="'question-' + question.id">{{ question.question_text }}</label>
+
+        <!-- Text Input -->
+        <div v-if="question.question_type === 'text'">
           <input
+              v-model="answers[question.id]"
+              :id="'question-' + question.id"
               type="text"
-              v-model="stepTwoAnswers[i]"
-              :class="{ 'text-highlighted': stepTwoAnswers[i] }"
+              placeholder="Your answer"
           />
-        </template>
+        </div>
+
+        <!-- Rating Input -->
+        <div v-if="question.question_type === 'rating'">
+          <div class="rating-scale">
+            <button
+                v-for="n in 10"
+                :key="n"
+                :class="['rating-button', { active: answers[question.id] === n }]"
+                @click="toggleRating(question.id, n)"
+                type="button"
+            >
+              {{ n }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Multiple Choice Input -->
+        <div v-if="question.question_type === 'multiple_choice' && question.answers.length">
+          <div class="options horizontal">
+            <div
+                v-for="option in question.answers"
+                :key="option.id"
+                :class="['option', { selected: answers[question.id] === option.answer }]"
+                @click="selectChoice(question.id, option.answer)"
+            >
+              <span>{{ option.answer }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dropdown Input -->
+        <div v-if="question.question_type === 'dropdown' && question.answers.length">
+          <select v-model="answers[question.id]" :id="'question-' + question.id">
+            <option
+                v-for="option in question.answers"
+                :key="option.id"
+                :value="option.answer"
+            >
+              {{ option.answer }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Fallback if no options -->
+        <div
+            v-if="(question.question_type === 'multiple_choice' || question.question_type === 'dropdown') && !question.answers.length"
+            class="no-options"
+        >
+          <em>No options available for this question.</em>
+        </div>
       </div>
 
-      <div class="button-group">
-        <button @click="goBackToStepOne">Back</button>
-        <button @click="submitSurvey">Submit</button>
-      </div>
-    </div>
-
-    <div v-if="showMessage" class="message-container">
-      <div class="message">Survey Submitted Successfully!</div>
+      <form @submit.prevent="submitSurvey">
+        <div class="full-width-btn">
+          <button type="submit">Submit Survey</button>
+        </div>
+      </form>
     </div>
   </div>
 </template>
 
-
-
-<script setup>
-import { ref } from 'vue'
-
-const step = ref(1)
-const stepOneAnswers = ref(Array(14).fill(''))
-const stepTwoAnswers = ref(Array(6).fill(''))
-
-const showMessage = ref(false)
-
-const stepOneQuestions = [
-  { label: 'Employee Name?', type: 'text' },
-  { label: 'Employee Contact Number?', type: 'text' },
-  { label: "How would you rate the employee's behavior with colleagues?", type: 'rating' },
-  { label: 'Commitment to completing tasks on time?', type: 'rating' },
-  { label: 'Commitment to cleanliness and organization?', type: 'rating' },
-  { label: 'Accuracy in performing tasks?', type: 'rating' },
-  { label: 'Efficiency relative to salary and benefits?', type: 'rating' },
-  { label: 'Quality of output (professionalism and expertise)?', type: 'rating' },
-  { label: 'Overall performance evaluation?', type: 'rating' },
-  { label: 'Recommend promotion or award?', type: 'multiple', options: ['Yes', 'No'] },
-  { label: 'If "No", reason for not recommending', type: 'text' },
-  { label: 'What stands out most about the employee?', type: 'text' },
-  { label: 'Task the employee excels at?', type: 'text' },
-  {
-    label: 'Likelihood to participate in activities (next 30 days)?',
-    type: 'multiple',
-    options: ['Daily', 'Weekly', 'Monthly']
-  }
-]
-
-const stepTwoQuestions = [
-  { label: 'Direct Supervisor Name', type: 'text' },
-  { label: 'Department Name', type: 'text' },
-  { label: 'Tasks or Projects Assigned', type: 'text' },
-  { label: 'Employee Nationality', type: 'text' },
-  {
-    label: 'Employee Gender',
-    type: 'dropdown',
-    options: ['Male', 'Female', 'Prefer not to say']
+<script>
+export default {
+  data() {
+    return {
+      surveys: [],
+      survey: {
+        id: null,
+        title: "",
+        description: "",
+        questions: [],
+      },
+      answers: {},
+      submittedQuestions: [],
+      isSurveySelected: false,
+      successMessage: "",
+      user_id: 5, // Example user ID
+      store_id: 1, // Example store ID
+      customer_name: "John Doe", // Example customer name
+      customer_phone: "0123456789", // Example customer phone number
+    };
   },
-  {
-    label: 'Employee Age Range',
-    type: 'dropdown',
-    options: ['Under 25', '25–34', '35–44', '45–54']
-  }
-]
+  mounted() {
+    this.fetchSurveys();
+  },
+  methods: {
+    async fetchSurveys() {
+      try {
+        const response = await fetch("https://survey.dd-ops.com/api/get_surveys");
+        const data = await response.json();
+        this.surveys = data;
+      } catch (error) {
+        console.error("Error fetching surveys:", error);
+      }
+    },
+    async fetchSurveyQuestions(surveyId) {
+      try {
+        const response = await fetch(`https://survey.dd-ops.com/api/survey/${surveyId}`);
+        const data = await response.json();
+        this.survey = data;
+        this.answers = {};
+        this.submittedQuestions = [];
+        this.isSurveySelected = true;
+      } catch (error) {
+        console.error("Error fetching survey questions:", error);
+      }
+    },
+    toggleRating(questionId, rating) {
+      this.answers[questionId] = this.answers[questionId] === rating ? null : rating;
+    },
+    selectChoice(questionId, choice) {
+      this.answers[questionId] = this.answers[questionId] === choice ? null : choice;
+    },
+    async submitSurvey() {
+      const answersArray = Object.keys(this.answers).map(id => ({
+        question_id: Number(id),
+        answer: this.answers[id],
+      }));
 
-const goToStepTwo = () => {
-  step.value = 2
-}
+      const requestBody = {
+        survey_id: this.survey.id,
+        user_id: this.user_id,
+        store_id: this.store_id,
+        customer_name: this.customer_name,
+        customer_phone: this.customer_phone,
+        answers: answersArray,
+      };
 
-const goBackToStepOne = () => {
-  step.value = 1
-}
+      try {
+        const response = await fetch("https://survey.dd-ops.com/api/store_submissions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-const submitSurvey = () => {
-  const finalData = {
-    stepOne: stepOneAnswers.value,
-    stepTwo: stepTwoAnswers.value
-  }
-  console.log('Survey Submitted:', finalData)
-  showMessage.value = true
-
-  setTimeout(() => {
-    showMessage.value = false
-  }, 3000)
-}
-
-const selectOption = (index, option) => {
-  stepOneAnswers.value[index] = option
-}
+        if (response.ok) {
+          this.successMessage = "Survey submitted successfully!";
+          this.submittedQuestions = Object.keys(this.answers).map(id => Number(id));
+        } else {
+          console.error("Error submitting survey:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error submitting survey:", error);
+      }
+    },
+  },
+};
 </script>
 
-
 <style scoped>
+/* (Same CSS you wrote — no changes needed) */
+.survey {
+  padding: 1rem;
+  max-width: 700px;
+  margin: 15px auto;
+  background-color: #fdfdfd;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
 h2 {
   color: #f26822;
   margin: 13px;
   text-align: center;
+}
+
+.survey-item {
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.survey-item:hover {
+  background-color: #f8f8f8;
+}
+
+.question {
+  margin-bottom: 1.2rem;
+  padding: 0.8rem;
+  border-bottom: 1px solid #eee;
+}
+
+.question.submitted {
+  border: 2px solid #4caf50;
+  background-color: #f0fff4;
+  position: relative;
+}
+
+.question.submitted::after {
+  content: "✔ Submitted";
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: #4caf50;
+  color: white;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #f26822;
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.6rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.rating-scale {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+.success-message {
+  text-align: center;
+  color: #4caf50;
+  background-color: #f0fff4;
+  padding: 1rem;
+  border: 1px solid #4caf50;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.rating-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+  color: #f26822;
+  font-weight: bold;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+}
+
+.rating-button.active {
+  background-color: #f26822;
+  color: white;
+}
+
+.rating-button:focus {
+  border-color: #f26822;
+}
+
+.options.horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.option {
+  flex: 1 1 auto;
+  min-width: 100px;
+  padding: 0.6rem;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+  text-align: center;
+}
+
+.option span {
+  font-size: 1rem;
+  display: block;
+}
+
+.option.selected {
+  background-color: #f26822;
+  color: white;
+}
+
+.option:hover {
+  background-color: #f26822;
+  transform: scale(1.05);
+  color: white;
 }
 
 .full-width-btn {
@@ -200,195 +354,37 @@ h2 {
   margin: 2rem auto;
 }
 
-.full-width-btn:hover {
-  background-color: #f26822;
-}
-
-.survey {
-  padding: 1rem;
-  max-width: 700px;
-  margin: auto;
-  background-color: #fdfdfd;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-}
-
-.question {
-  margin-bottom: 1.2rem;
-  padding: 0.8rem;
-  border-bottom: 1px solid #eee;
-}
-
-label {
-  font-weight: bold;
-  display: block;
-  margin-bottom: 0.4rem;
-  color: #f26822;
-}
-
-input,
-select {
-  width: 100%;
-  margin-top: 0.4rem;
-  padding: 0.6rem;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-button {
-  width: 100%;
-  padding: 0.8rem;
-  background-color: #f26822;
-  color: white;
+.full-width-btn button {
+  background-color: transparent;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  color: inherit;
   cursor: pointer;
-  transition: background-color 0.3s ease;
 }
 
-button:hover {
+.full-width-btn button:hover {
   background-color: #f26822;
 }
 
-.message-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  opacity: 0;
-  animation: fadeIn 0.5s forwards;
-}
-
-.message {
-  padding: 1rem;
-  background-color: #f26822;
-  color: white;
-  border-radius: 12px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-  font-size: 1rem;
-  font-weight: bold;
-  text-align: center;
-  transition: opacity 0.5s ease;
-}
-
-@keyframes fadeIn {
-  to {
-    opacity: 1;
-  }
-}
-
-.options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 0.6rem;
-  justify-content: center;
-}
-
-.option-button {
-  flex: 1 1 120px;
-  min-width: 100px;
-  padding: 0.8rem 1rem;
-  background-color: #f0f0f0;
-  color: #333;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  text-align: center;
-}
-
-.option-button:hover,
-.option-button.selected {
-  background-color: #f26822;
-  color: white;
-  border-color: #f26822;
-}
-
-.rating-scale {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  justify-content: center;
-}
-
-.rating-button {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background-color: #f0f0f0;
-  font-weight: bold;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  user-select: none;
-  border: 2px solid transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rating-button:hover {
-  background-color: #e0e0e0;
-}
-
-.rating-button.selected {
-  background-color: #f26822;
-  color: white;
-  border-color: #f26822;
-}
-.text-highlighted {
-  border-color: #f26822 !important;
-}
-
-.question.text-answered {
-  border-left: 4px solid #f26822;
-}
-
-
-.question.answered {
-  border-left: 4px solid #f26822;
-  background-color: #fffaf5;
-}
-
-.hidden-radio {
-  display: none;
+.no-options {
+  font-style: italic;
+  color: #999;
+  padding-top: 0.5rem;
 }
 
 @media (max-width: 768px) {
   .full-width-btn {
     width: 90%;
   }
-
-  .button-group {
-    flex-direction: column;
-  }
-
-  .option-button {
-    flex: 1 1 100%;
-  }
-
   .rating-button {
     width: 40px;
     height: 40px;
     font-size: 1rem;
   }
-
   h2 {
     font-size: 1.5rem;
   }
+  .option {
+    flex: 1 1 45%;
+  }
 }
 </style>
-

@@ -2,20 +2,22 @@
   <div class="navbar-content" @click="closeSidebar">
     <p class="brand">Employee Management System</p>
 
-    <!-- Hamburger Icon -->
+    <!-- Hamburger Icon (Always Visible) -->
     <div class="hamburger" @click.stop="toggleMenu">
       <span class="icon-bar"></span>
       <span class="icon-bar"></span>
       <span class="icon-bar"></span>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar Menu -->
     <div :class="['sidebar', { open: menuOpen }]">
       <div class="sidebar-content">
-        <p @click="goToHome">Home</p>
-        <p @click="goToClock">Clock</p>
-        <p>Edit</p>
-        <p @click="goToSurvey">Survey</p>
+        <p @click="navigateAndClose('/home')">Home</p>
+        <p @click="navigateAndClose('/clock')">Clock</p>
+        <p @click="navigateAndClose('/todo')">To Do List</p>
+        <p @click="navigateAndClose('/survey')">Survey</p>
+        <p @click="navigateAndClose('/admin')">Admin</p>
+        <p @click="navigateAndClose('/surAdmin')">SurveyAdmin</p>
       </div>
     </div>
   </div>
@@ -38,19 +40,11 @@ const closeSidebar = (e) => {
   }
 }
 
-const goToHome = () => {
-  router.push('/home')
+const navigateAndClose = (path) => {
+  router.push(path)
+  menuOpen.value = false
 }
 
-const goToClock = () => {
-  router.push('/clock')
-}
-
-const goToSurvey = () => {
-  router.push('/survey')
-}
-
-// Close sidebar if clicked outside
 onMounted(() => {
   document.addEventListener('click', closeSidebar)
 })
@@ -61,106 +55,83 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.nav-link {
-  text-decoration: none;
-  color: #fff;
-  font-weight: 500;
-}
-
-.nav-link:hover {
-  text-decoration: underline;
-}
-
 .navbar-content {
-  padding: 0 1rem;
+  padding: 0.4rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background-color: #fff;
   position: relative;
   z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
 }
 
 .brand {
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   color: #eb804b;
-}
-
-.nav-bar {
-  display: flex;
-  flex-direction: row;
-  gap: 15px;
-}
-
-.nav-bar p {
   margin: 0;
-  cursor: pointer;
-  color: #eb804b;
-  font-weight: 500;
 }
 
-/* Sidebar styles */
-.sidebar {
-  position: fixed;
-  left: -250px; /* Sidebar hidden by default */
-  top: 0;
-  width: 250px;
-  height: 100%;
-  background-color: #fff4ee; /* Sidebar background color set to white */
-  padding-top: 20px;
-  transition: 0.3s;
-  z-index: 20;
-}
-
-.sidebar.open {
-  left: 0; /* Slide in */
-}
-
-.sidebar-content p {
-  margin: 0;
-  padding: 15px;
-  color: #f26822; /* Text color for sidebar */
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.sidebar-content p:hover {
-  background-color: #f26822; /* Background color on hover */
-  color: white; /* Text color on hover */
-}
-
-/* Hamburger icon for mobile */
+/* Hamburger Icon */
 .hamburger {
   display: flex;
   flex-direction: column;
-  cursor: pointer;
   gap: 4px;
+  cursor: pointer;
 }
 
 .icon-bar {
   height: 3px;
   width: 25px;
-  background: #f26822; /* Hamburger icon color */
+  background-color: #f26822;
   border-radius: 2px;
 }
 
-/* Hide sidebar content initially and show hamburger on mobile */
-@media (max-width: 768px) {
-  .nav-bar {
-    display: none; /* Hide main nav-bar on mobile */
-  }
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: -260px;
+  top: 0;
+  width: 250px;
+  height: 100vh;
+  background-color: #fff4ee;
+  transition: 0.3s ease;
+  z-index: 20;
+  padding-top: 60px;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+}
 
-  .hamburger {
-    display: flex; /* Show hamburger icon */
-  }
+.sidebar.open {
+  left: 0;
+}
 
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.sidebar-content p {
+  margin: 0 0 10px 0;
+  padding: 12px 20px;
+  color: #f26822;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.sidebar-content p:hover {
+  background-color: #f26822;
+  color: white;
+}
+
+/* Responsive — Sidebar always triggered with hamburger */
+@media (min-width: 769px) {
   .sidebar {
-    left: -250px; /* Sidebar is hidden off-screen */
-  }
-
-  .sidebar.open {
-    left: 0; /* Sidebar slides in when 'open' class is added */
+    width: 250px;
   }
 }
 </style>
